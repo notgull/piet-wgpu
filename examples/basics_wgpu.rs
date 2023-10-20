@@ -26,7 +26,7 @@ use piet_hardware::piet::kurbo::{Affine, BezPath, Point, Rect, Vec2};
 use piet_hardware::piet::{self, GradientStop, RenderContext as _};
 use piet_wgpu::RenderContext;
 
-const ORANGES: &[u8] = include_bytes!("../../piet-glow/examples/assets/oranges.jpg");
+const ORANGES: &[u8] = include_bytes!("../assets/test-image.png");
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // A path representing a star.
