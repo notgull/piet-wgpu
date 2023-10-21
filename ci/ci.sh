@@ -42,7 +42,7 @@ piet_wgpu_test_version() {
     return
   fi
   
-  piet_wgpu_check_target wasm32-unknown-unknown build
+  RUSTFLAGS="--cfg=web_sys_unstable_apis" piet_wgpu_check_target wasm32-unknown-unknown build
   piet_wgpu_check_target x86_64-pc-windows-gnu build
   piet_wgpu_check_target x86_64-apple-darwin check
 }
