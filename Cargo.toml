@@ -13,7 +13,7 @@ description = "A hardware-accelerated 2D graphics backend for piet using wgpu"
 
 [dependencies]
 bytemuck = { version = "1.14.0", features = ["derive"] }
-piet-hardware = "0.4.0"
+piet-hardware = "0.5.0"
 tracing = "0.1.40"
 wgpu = "0.17.0"
 

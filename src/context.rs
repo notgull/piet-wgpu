@@ -30,7 +30,8 @@ use std::num::NonZeroU64;
 use std::ops::Range;
 use std::rc::Rc;
 
-use piet_hardware::piet::kurbo::Affine;
+use piet_hardware::gpu_types::{AreaCapture, BufferPush, SubtextureWrite, TextureWrite};
+use piet_hardware::piet::kurbo::{Affine, Rect};
 use piet_hardware::piet::{Color, InterpolationMode};
 use piet_hardware::Vertex;
 
@@ -111,6 +112,7 @@ impl DrawOp {
                     mask_texture,
                     viewport_size,
                     uniform_bind_group,
+                    clip_rect,
                 } = buffer;
 
                 // Set the pipeline.
@@ -119,6 +121,20 @@ impl DrawOp {
                 // Set the viewport and the bind group.
                 pass.set_viewport(0.0, 0.0, viewport_size[0], viewport_size[1], 0.0, 1.0);
                 pass.set_bind_group(0, uniform_bind_group, &[]);
+
+                // If needed, pass the scissor rect.
+                let scissor = clip_rect.unwrap_or(Rect::new(
+                    0.0,
+                    0.0,
+                    viewport_size[0].into(),
+                    viewport_size[1].into(),
+                ));
+                pass.set_scissor_rect(
+                    scissor.x0 as u32,
+                    scissor.y0 as u32,
+                    scissor.width() as u32,
+                    scissor.height() as u32,
+                );
 
                 // Bind textures.
                 pass.set_bind_group(1, color_texture, &[]);
@@ -182,6 +198,9 @@ pub(crate) struct PushedBuffer {
 
     /// The viewport size.
     viewport_size: [f32; 2],
+
+    /// Clipping rectangle.
+    clip_rect: Option<Rect>,
 
     /// The bind group for uniforms.
     uniform_bind_group: Rc<wgpu::BindGroup>,
@@ -594,6 +613,7 @@ impl GpuContext {
             buffers: buffers.clone(),
             viewport_size: [viewport_width, viewport_height],
             uniform_bind_group: Rc::new(uniforms),
+            clip_rect: None,
         }));
     }
 }
@@ -675,26 +695,36 @@ impl piet_hardware::GpuContext for GpuContext {
 
     fn write_texture(
         &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        tex: &Self::Texture,
-        size: (u32, u32),
-        format: piet_hardware::piet::ImageFormat,
-        data: Option<&[u8]>,
+        TextureWrite {
+            device,
+            queue,
+            texture,
+            size,
+            format,
+            data,
+        }: TextureWrite<'_, Self>,
     ) {
-        tex.borrow_mut()
-            .write_texture(device, queue, &self.texture_bind_layout, size, format, data)
+        texture.borrow_mut().write_texture(
+            device,
+            queue,
+            &self.texture_bind_layout,
+            size,
+            format,
+            data,
+        )
     }
 
     fn write_subtexture(
         &mut self,
-        _device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        texture: &Self::Texture,
-        offset: (u32, u32),
-        size: (u32, u32),
-        format: piet_hardware::piet::ImageFormat,
-        data: &[u8],
+        SubtextureWrite {
+            queue,
+            texture,
+            offset,
+            size,
+            format,
+            data,
+            ..
+        }: SubtextureWrite<'_, Self>,
     ) {
         texture
             .borrow_mut()
@@ -716,12 +746,14 @@ impl piet_hardware::GpuContext for GpuContext {
 
     fn capture_area(
         &mut self,
-        device: &Self::Device,
-        queue: &Self::Queue,
-        texture: &Self::Texture,
-        offset: (u32, u32),
-        size: (u32, u32),
-        bitmap_scale: f64,
+        AreaCapture {
+            device,
+            queue,
+            texture,
+            offset,
+            size,
+            bitmap_scale,
+        }: AreaCapture<'_, Self>,
     ) -> Result<(), Self::Error> {
         tracing::warn!("capture_area is not performant on the wgpu backend, consider using a software rasterizer instead");
 
@@ -883,13 +915,16 @@ impl piet_hardware::GpuContext for GpuContext {
 
     fn push_buffers(
         &mut self,
-        device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        vertex_buffer: &Self::VertexBuffer,
-        current_texture: &Self::Texture,
-        mask_texture: &Self::Texture,
-        transform: &Affine,
-        (viewport_width, viewport_height): (u32, u32),
+        BufferPush {
+            device,
+            queue: _,
+            vertex_buffer,
+            current_texture,
+            mask_texture,
+            transform,
+            viewport_size: (viewport_width, viewport_height),
+            clip,
+        }: BufferPush<'_, Self>,
     ) -> Result<(), Self::Error> {
         // Pop off slices.
         let vb_slice = vertex_buffer.borrow_vertex_buffer_mut().pop_slice();
@@ -952,6 +987,7 @@ impl piet_hardware::GpuContext for GpuContext {
             mask_texture: mask_texture.bind_group(),
             uniform_bind_group: bind_group,
             viewport_size: [viewport_width as f32, viewport_height as f32],
+            clip_rect: clip,
         }));
 
         Ok(())
