@@ -2,6 +2,10 @@
 
 This log describes changes in the `piet-hardware`, `piet-glow` and `piet-wgpu` crates.
 
+## 0.3.3
+
+- Add support for optimized rectangular clipping from `piet-hardware` v0.5.0.
+
 ## 0.3.2
 
 - Move source code to `src.notgull.net`.
