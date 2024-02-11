@@ -1,8 +1,8 @@
 # Contribution
 
 We welcome contributions to this project. Please do not open issues or pull
-requests on the GitHub mirror. Please open issues and pull requests on our
-[`Git forge`](https://src.notgull.net/notgull/piet-wgpu).
+requests on the GitHub mirror. Please open issues and pull requests on
+[`Codeberg`](https://codeberg.org/notgull/piet-wgpu).
 
 ## Coding Style
 
